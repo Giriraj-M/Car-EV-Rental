@@ -1,0 +1,751 @@
+{% extends 'base.html' %}
+
+{% block title %}Driver Dashboard - EV Taxi Fleet Management{% endblock %}
+
+{% block body_class %}dashboard-page driver-dashboard{% endblock %}
+
+{% block content %}
+<div class="driver-layout">
+    <!-- Driver Sidebar -->
+    <aside class="driver-sidebar">
+        <div class="driver-brand">
+            <div class="brand-icon">
+                <i class="fas fa-bolt"></i>
+            </div>
+            <div class="brand-name">
+                <h2>EV Taxi</h2>
+                <span>Driver Portal</span>
+            </div>
+        </div>
+        
+        <nav class="driver-nav">
+            <ul>
+                <li class="active" data-section="main">
+                    <a href="#main">
+                        <i class="fas fa-th-large"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li data-section="vehicle">
+                    <a href="#vehicle">
+                        <i class="fas fa-car"></i>
+                        <span>My Vehicle</span>
+                    </a>
+                </li>
+                <li data-section="charging">
+                    <a href="#charging">
+                        <i class="fas fa-charging-station"></i>
+                        <span>Charging</span>
+                    </a>
+                </li>
+                <li data-section="profile">
+                    <a href="#profile">
+                        <i class="fas fa-user"></i>
+                        <span>My Profile</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        
+        <div class="driver-profile-mini">
+            <div class="profile-avatar">
+                <i class="fas fa-user-circle"></i>
+            </div>
+            <div class="profile-info">
+                <h4>{{ driver.name }}</h4>
+                <span style="font-size: 10px; color: #6366f1; background: rgba(99, 102, 241, 0.2); padding: 2px 6px; border-radius: 4px; margin-bottom: 4px; display: inline-block;">{{ driver.unique_id }}</span>
+                <span>{{ driver.car_number }}</span>
+            </div>
+            <a href="{{ url_for('logout') }}" class="logout-btn" title="Logout" aria-label="Logout">
+                <i class="fas fa-sign-out-alt"></i>
+            </a>
+        </div>
+    </aside>
+    
+    <!-- Main Content Area -->
+    <main class="driver-main">
+        <!-- Top Header -->
+        <header class="driver-header">
+            <div class="header-left">
+                <button class="mobile-menu-btn" id="mobileMenuBtn" title="Toggle menu" aria-label="Toggle menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="greeting">
+                    <h1>Welcome, <span>{{ driver.name }}</span> <span style="font-size: 14px; color: #6366f1; background: rgba(99, 102, 241, 0.2); padding: 3px 10px; border-radius: 6px; vertical-align: middle;">{{ driver.unique_id }}</span></h1>
+                    <p id="greeting-time">Good morning! Have a safe drive today.</p>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="header-date">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span id="current-date"></span>
+                </div>
+                <div class="status-indicator {{ driver.status }}">
+                    <span class="status-dot"></span>
+                    <span>{{ driver.status|capitalize }}</span>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Content Sections -->
+        <div class="driver-content">
+            <!-- Main Dashboard Section -->
+            <section id="main" class="driver-section active">
+                <!-- Quick Status Bar -->
+                <div class="quick-status-bar">
+                    <div class="qsb-item battery {% if driver.battery_percentage < 20 %}low{% elif driver.battery_percentage < 50 %}medium{% else %}good{% endif %}">
+                        <i class="fas fa-battery-{% if driver.battery_percentage < 20 %}quarter{% elif driver.battery_percentage < 50 %}half{% else %}three-quarters{% endif %}"></i>
+                        <div class="qsb-data">
+                            <span class="qsb-value">{{ driver.battery_percentage }}%</span>
+                            <span class="qsb-label">Battery</span>
+                        </div>
+                    </div>
+                    <div class="qsb-item range">
+                        <i class="fas fa-route"></i>
+                        <div class="qsb-data">
+                            <span class="qsb-value">{{ driver.estimated_range }} km</span>
+                            <span class="qsb-label">Est. Range</span>
+                        </div>
+                    </div>
+                    <div class="qsb-item speed {% if driver.current_speed > speed_limit %}danger{% endif %}">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <div class="qsb-data">
+                            <span class="qsb-value">{{ driver.current_speed }} km/h</span>
+                            <span class="qsb-label">Speed</span>
+                        </div>
+                    </div>
+                    <div class="qsb-item location">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <div class="qsb-data">
+                            <span class="qsb-value">{{ driver.location }}</span>
+                            <span class="qsb-label">Location</span>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if driver.current_speed > speed_limit %}
+                <div class="speed-warning-banner">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>SPEED WARNING: You are exceeding the {{ speed_limit }} km/h speed limit!</span>
+                </div>
+                {% endif %}
+                
+                <!-- Dashboard Grid -->
+                <div class="dashboard-grid">
+                    <!-- Vehicle Card -->
+                    <div class="dash-card vehicle-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-car"></i> My Vehicle</h3>
+                            <span class="card-badge {{ driver.status }}">{{ driver.status|capitalize }}</span>
+                        </div>
+                        <div class="vehicle-display">
+                            <div class="vehicle-icon">
+                                <i class="fas fa-car-side"></i>
+                            </div>
+                            <div class="vehicle-info">
+                                <h4>{{ driver.car_model }}</h4>
+                                <p class="vehicle-number">{{ driver.car_number }}</p>
+                            </div>
+                        </div>
+                        <div class="vehicle-stats">
+                            <div class="vs-item">
+                                <span class="vs-label">Battery</span>
+                                <div class="vs-bar">
+                                    <div class="vs-fill {% if driver.battery_percentage < 20 %}low{% elif driver.battery_percentage < 50 %}medium{% else %}good{% endif %}" data-width="{{ driver.battery_percentage }}"></div>
+                                </div>
+                                <span class="vs-value">{{ driver.battery_percentage }}%</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Admin Info Card -->
+                    <div class="dash-card admin-info-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-user-shield"></i> Fleet Administrator</h3>
+                        </div>
+                        <div class="admin-profile">
+                            <div class="admin-avatar">
+                                <i class="fas fa-user-tie"></i>
+                            </div>
+                            <div class="admin-details">
+                                <h4>{{ admin_info.name }}</h4>
+                                <p class="admin-designation">{{ admin_info.designation }}</p>
+                            </div>
+                        </div>
+                        <div class="admin-contact">
+                            <div class="ac-item">
+                                <i class="fas fa-phone"></i>
+                                <div>
+                                    <span class="ac-label">Phone</span>
+                                    <a href="tel:{{ admin_info.phone }}">{{ admin_info.phone }}</a>
+                                </div>
+                            </div>
+                            <div class="ac-item">
+                                <i class="fas fa-envelope"></i>
+                                <div>
+                                    <span class="ac-label">Email</span>
+                                    <a href="mailto:{{ admin_info.email }}">{{ admin_info.email }}</a>
+                                </div>
+                            </div>
+                            <div class="ac-item">
+                                <i class="fas fa-building"></i>
+                                <div>
+                                    <span class="ac-label">Office</span>
+                                    <span>{{ admin_info.office }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <a href="tel:{{ admin_info.phone }}" class="call-admin-btn">
+                            <i class="fas fa-phone-alt"></i> Call Admin
+                        </a>
+                    </div>
+                    
+                    <!-- Range Prediction Card -->
+                    <!-- Range Prediction Card -->
+                    <div class="dash-card range-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-road"></i> Range Prediction</h3>
+                        </div>
+                        <div class="range-display">
+                            <div class="range-circle">
+                                <svg viewBox="0 0 120 120">
+                                    <circle cx="60" cy="60" r="54" fill="none" stroke="#e0e0e0" stroke-width="8"/>
+                                    <circle cx="60" cy="60" r="54" fill="none" stroke="url(#rangeGradient)" stroke-width="8" 
+                                            stroke-dasharray="339.3" 
+                                            stroke-dashoffset="{{ 339.3 - (driver.battery_percentage * 3.393) }}"
+                                            stroke-linecap="round"
+                                            transform="rotate(-90 60 60)"/>
+                                    <defs>
+                                        <linearGradient id="rangeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                            <stop offset="0%" stop-color="#00d9ff"/>
+                                            <stop offset="100%" stop-color="#00ffc8"/>
+                                        </linearGradient>
+                                    </defs>
+                                </svg>
+                                <div class="range-value">
+                                    <span class="range-num" id="estimatedRange">{{ driver.estimated_range }}</span>
+                                    <span class="range-unit">km</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Range Calculation Details -->
+                        <div class="range-calc-details">
+                            <div class="rcd-item">
+                                <span class="rcd-label"><i class="fas fa-battery-half"></i> Battery</span>
+                                <span class="rcd-value">{{ driver.battery_percentage }}%</span>
+                            </div>
+                            <div class="rcd-item">
+                                <span class="rcd-label"><i class="fas fa-car"></i> Vehicle</span>
+                                <span class="rcd-value">{{ driver.car_model }}</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Range Adjustment Factors -->
+                        <div class="range-factors-panel">
+                            <h4><i class="fas fa-sliders-h"></i> Adjust Conditions</h4>
+                            <div class="factor-item">
+                                <label><i class="fas fa-snowflake"></i> AC/Heating</label>
+                                <select id="acFactor" onchange="recalculateRange()" title="AC/Heating" aria-label="AC/Heating">
+                                    <option value="0">Off</option>
+                                    <option value="10" selected>Normal</option>
+                                    <option value="20">High</option>
+                                </select>
+                            </div>
+                            <div class="factor-item">
+                                <label><i class="fas fa-tachometer-alt"></i> Driving Style</label>
+                                <select id="drivingStyle" onchange="recalculateRange()" title="Driving Style" aria-label="Driving Style">
+                                    <option value="10">Aggressive (-10%)</option>
+                                    <option value="0" selected>Normal</option>
+                                    <option value="-5">Eco (+5%)</option>
+                                </select>
+                            </div>
+                            <div class="factor-item">
+                                <label><i class="fas fa-traffic-light"></i> Traffic</label>
+                                <select id="trafficFactor" onchange="recalculateRange()" title="Traffic" aria-label="Traffic">
+                                    <option value="15">Heavy (-15%)</option>
+                                    <option value="5" selected>Moderate (-5%)</option>
+                                    <option value="0">Light</option>
+                                </select>
+                            </div>
+                            <div class="adjusted-range">
+                                <span>Adjusted Range:</span>
+                                <strong id="adjustedRange">{{ driver.estimated_range }} km</strong>
+                            </div>
+                            <button class="range-info-btn" onclick="showRangeFormula()" title="How is range calculated?">
+                                <i class="fas fa-info-circle"></i> How it's calculated
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Charging Cost Summary Card -->
+                    <div class="dash-card charging-cost-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-bolt"></i> My Charging Costs</h3>
+                        </div>
+                        <div class="charging-costs-grid">
+                            <div class="cost-item daily">
+                                <div class="cost-icon"><i class="fas fa-sun"></i></div>
+                                <div class="cost-data">
+                                    <span class="cost-amount">₹{{ "{:,.0f}".format(charging_costs.daily) }}</span>
+                                    <span class="cost-period">Today</span>
+                                </div>
+                            </div>
+                            <div class="cost-item monthly">
+                                <div class="cost-icon"><i class="fas fa-calendar-alt"></i></div>
+                                <div class="cost-data">
+                                    <span class="cost-amount">₹{{ "{:,.0f}".format(charging_costs.monthly_avg) }}</span>
+                                    <span class="cost-period">This Month</span>
+                                </div>
+                            </div>
+                            <div class="cost-item yearly">
+                                <div class="cost-icon"><i class="fas fa-calendar"></i></div>
+                                <div class="cost-data">
+                                    <span class="cost-amount">₹{{ "{:,.0f}".format(charging_costs.yearly) }}</span>
+                                    <span class="cost-period">This Year</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Vehicle Section -->
+            <section id="vehicle" class="driver-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-car"></i> My Vehicle Details</h2>
+                </div>
+                
+                <div class="vehicle-detail-grid">
+                    <div class="vd-card main">
+                        <div class="vd-visual">
+                            <div class="car-silhouette">
+                                <i class="fas fa-car-side"></i>
+                            </div>
+                        </div>
+                        <div class="vd-specs">
+                            <h3>{{ driver.car_model }}</h3>
+                            <p class="vd-number">{{ driver.car_number }}</p>
+                            <div class="vd-tags">
+                                <span class="vd-tag electric"><i class="fas fa-leaf"></i> Electric</span>
+                                <span class="vd-tag {{ driver.status }}">{{ driver.status|capitalize }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="vd-card battery-detail">
+                        <h4><i class="fas fa-battery-full"></i> Battery Status</h4>
+                        <div class="battery-visual">
+                            <div class="battery-body">
+                                <div class="battery-level {% if driver.battery_percentage < 20 %}low{% elif driver.battery_percentage < 50 %}medium{% else %}good{% endif %}" data-width="{{ driver.battery_percentage }}">
+                                    <span>{{ driver.battery_percentage }}%</span>
+                                </div>
+                            </div>
+                            <div class="battery-cap"></div>
+                        </div>
+                        <p class="battery-status-text">
+                            {% if driver.battery_percentage < 20 %}
+                            <i class="fas fa-exclamation-triangle"></i> Low battery - charge soon!
+                            {% elif driver.battery_percentage < 50 %}
+                            <i class="fas fa-info-circle"></i> Battery level moderate
+                            {% else %}
+                            <i class="fas fa-check-circle"></i> Battery level good
+                            {% endif %}
+                        </p>
+                    </div>
+                    
+                    <div class="vd-card location-detail">
+                        <h4><i class="fas fa-map-marker-alt"></i> Current Location</h4>
+                        <div class="location-display">
+                            <p class="loc-name">{{ driver.location }}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="vd-card speed-detail">
+                        <h4><i class="fas fa-tachometer-alt"></i> Current Speed</h4>
+                        <div class="speedometer">
+                            <span class="speed-value {% if driver.current_speed > speed_limit %}danger{% endif %}">{{ driver.current_speed }}</span>
+                            <span class="speed-unit">km/h</span>
+                        </div>
+                        <p class="speed-limit-note">Speed limit: {{ speed_limit }} km/h</p>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Charging Section -->
+            <section id="charging" class="driver-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-charging-station"></i> Charging Information</h2>
+                </div>
+                
+                <div class="charging-grid">
+                    <!-- Current Status -->
+                    <div class="charge-card current-status">
+                        <div class="cc-header">
+                            <h4>Current Status</h4>
+                            <span class="status-pill {{ driver.charging_status }}">
+                                {{ driver.charging_status|capitalize }}
+                            </span>
+                        </div>
+                        {% if driver.charging_status == 'charging' %}
+                        <div class="charging-animation">
+                            <div class="charge-icon pulse">
+                                <i class="fas fa-bolt"></i>
+                            </div>
+                            <p>Charging in progress...</p>
+                            <div class="charge-progress">
+                                <div class="cp-bar">
+                                    <div class="cp-fill" data-width="{{ driver.battery_percentage }}"></div>
+                                </div>
+                                <span>{{ driver.battery_percentage }}%</span>
+                            </div>
+                            <p class="charge-time"><i class="fas fa-clock"></i> ~{{ driver.charging_time }} min remaining</p>
+                        </div>
+                        {% else %}
+                        <div class="not-charging">
+                            <div class="nc-icon">
+                                <i class="fas fa-plug"></i>
+                            </div>
+                            <p>Vehicle is not currently charging</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Charging Cost Breakdown -->
+                    <div class="charge-card cost-breakdown">
+                        <div class="cc-header">
+                            <h4>Charging Cost Breakdown</h4>
+                        </div>
+                        <div class="cost-breakdown-list">
+                            <div class="cbl-item">
+                                <div class="cbl-icon daily-icon"><i class="fas fa-sun"></i></div>
+                                <div class="cbl-info">
+                                    <span class="cbl-label">Today's Cost</span>
+                                    <span class="cbl-value">₹{{ "{:,.0f}".format(charging_costs.daily) }}</span>
+                                </div>
+                            </div>
+                            <div class="cbl-item">
+                                <div class="cbl-icon monthly-icon"><i class="fas fa-calendar-week"></i></div>
+                                <div class="cbl-info">
+                                    <span class="cbl-label">Monthly Average</span>
+                                    <span class="cbl-value">₹{{ "{:,.0f}".format(charging_costs.monthly_avg) }}</span>
+                                </div>
+                            </div>
+                            <div class="cbl-item">
+                                <div class="cbl-icon yearly-icon"><i class="fas fa-calendar-check"></i></div>
+                                <div class="cbl-info">
+                                    <span class="cbl-label">Yearly Total</span>
+                                    <span class="cbl-value">₹{{ "{:,.0f}".format(charging_costs.yearly) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Monthly Charging Chart -->
+                    <div class="charge-card chart-card">
+                        <div class="cc-header">
+                            <h4>Monthly Charging Costs</h4>
+                        </div>
+                        <div class="chart-area">
+                            <canvas id="driverChargingChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Profile Section -->
+            <section id="profile" class="driver-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-user"></i> My Profile</h2>
+                </div>
+                
+                <div class="profile-grid">
+                    <div class="profile-card main-profile">
+                        <div class="profile-header">
+                            <div class="profile-avatar-large">
+                                <i class="fas fa-user-circle"></i>
+                            </div>
+                            <div class="profile-name">
+                                <h3>{{ driver.name }}</h3>
+                                <span style="font-size: 11px; color: #6366f1; background: rgba(99, 102, 241, 0.2); padding: 3px 10px; border-radius: 6px; margin-bottom: 8px; display: inline-block;">{{ driver.unique_id }}</span>
+                                <p>Driver - {{ driver.car_number }}</p>
+                            </div>
+                        </div>
+                        <div class="profile-details">
+                            <div class="pd-row">
+                                <div class="pd-item">
+                                    <span class="pd-label"><i class="fas fa-birthday-cake"></i> Age</span>
+                                    <span class="pd-value">{{ driver.age }} years</span>
+                                </div>
+                                <div class="pd-item">
+                                    <span class="pd-label"><i class="fas fa-venus-mars"></i> Gender</span>
+                                    <span class="pd-value">{{ driver.gender }}</span>
+                                </div>
+                            </div>
+                            <div class="pd-row">
+                                <div class="pd-item">
+                                    <span class="pd-label"><i class="fas fa-phone"></i> Phone</span>
+                                    <span class="pd-value">{{ driver.phone }}</span>
+                                </div>
+                                <div class="pd-item">
+                                    <span class="pd-label"><i class="fas fa-tint"></i> Blood Group</span>
+                                    <span class="pd-value">{{ driver.blood_group }}</span>
+                                </div>
+                            </div>
+                            <div class="pd-row full">
+                                <div class="pd-item">
+                                    <span class="pd-label"><i class="fas fa-home"></i> Address</span>
+                                    <span class="pd-value">{{ driver.address }}</span>
+                                </div>
+                            </div>
+                            <div class="pd-row">
+                                <div class="pd-item">
+                                    <span class="pd-label"><i class="fas fa-id-card"></i> License Number</span>
+                                    <span class="pd-value">{{ driver.license_number }}</span>
+                                </div>
+                                <div class="pd-item">
+                                    <span class="pd-label"><i class="fas fa-calendar-plus"></i> Joining Date</span>
+                                    <span class="pd-value">{{ driver.joining_date }}</span>
+                                </div>
+                            </div>
+                            <div class="pd-row full">
+                                <div class="pd-item">
+                                    <span class="pd-label"><i class="fas fa-phone-square-alt"></i> Emergency Contact</span>
+                                    <span class="pd-value">{{ driver.emergency_contact }}</span>
+                                </div>
+                            </div>
+                            <div class="pd-row full">
+                                <div class="pd-item">
+                                    <span class="pd-label"><i class="fas fa-envelope"></i> Email</span>
+                                    <span class="pd-value">{{ driver.email }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Admin Contact Card in Profile -->
+                    <div class="profile-card admin-contact-card">
+                        <h4><i class="fas fa-user-shield"></i> My Fleet Admin</h4>
+                        <div class="admin-mini-profile">
+                            <div class="amp-avatar">
+                                <i class="fas fa-user-tie"></i>
+                            </div>
+                            <div class="amp-info">
+                                <h5>{{ admin_info.name }}</h5>
+                                <p>{{ admin_info.designation }}</p>
+                            </div>
+                        </div>
+                        <div class="admin-contact-details">
+                            <p><i class="fas fa-phone"></i> {{ admin_info.phone }}</p>
+                            <p><i class="fas fa-envelope"></i> {{ admin_info.email }}</p>
+                            <p><i class="fas fa-building"></i> {{ admin_info.office }}</p>
+                        </div>
+                        <a href="tel:{{ admin_info.phone }}" class="contact-admin-btn">
+                            <i class="fas fa-phone-alt"></i> Contact Admin
+                        </a>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+</div>
+
+<script>
+const driverData = {{ driver|tojson|safe }};
+const speedLimit = {{ speed_limit }};
+const chargingCosts = {{ charging_costs|tojson|safe }};
+
+// Set dynamic widths from data attributes
+document.querySelectorAll('[data-width]').forEach(function(el) {
+    el.style.width = el.getAttribute('data-width') + '%';
+});
+
+// Update greeting based on time
+function updateGreeting() {
+    const hour = new Date().getHours();
+    const greetingEl = document.getElementById('greeting-time');
+    let greeting = '';
+    if (hour < 12) greeting = 'Good morning! Have a safe drive today.';
+    else if (hour < 17) greeting = 'Good afternoon! Drive safely.';
+    else greeting = 'Good evening! Safe travels.';
+    if (greetingEl) greetingEl.textContent = greeting;
+}
+
+// Update date
+function updateDate() {
+    const now = new Date();
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const dateEl = document.getElementById('current-date');
+    if (dateEl) dateEl.textContent = now.toLocaleDateString('en-IN', options);
+}
+
+// Section navigation
+document.querySelectorAll('.driver-nav li').forEach(item => {
+    item.addEventListener('click', function() {
+        const section = this.dataset.section;
+        
+        document.querySelectorAll('.driver-nav li').forEach(i => i.classList.remove('active'));
+        this.classList.add('active');
+        
+        document.querySelectorAll('.driver-section').forEach(s => s.classList.remove('active'));
+        document.getElementById(section).classList.add('active');
+    });
+});
+
+// Mobile menu toggle
+document.getElementById('mobileMenuBtn')?.addEventListener('click', function() {
+    document.querySelector('.driver-sidebar').classList.toggle('active');
+});
+
+// Initialize driver charging chart
+function initDriverChargingChart() {
+    const ctx = document.getElementById('driverChargingChart');
+    if (!ctx) {
+        console.log('driverChargingChart canvas not found');
+        return;
+    }
+    
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthlyCosts = driverData.charging_cost_monthly || [];
+    
+    console.log('Driver charging chart data:', monthlyCosts);
+    
+    if (!monthlyCosts || monthlyCosts.length === 0) {
+        console.log('No charging cost data available');
+        return;
+    }
+    
+    try {
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: months,
+                datasets: [{
+                    label: 'Charging Cost (₹)',
+                    data: monthlyCosts,
+                    backgroundColor: 'rgba(0, 217, 255, 0.7)',
+                    borderColor: 'rgba(0, 217, 255, 1)',
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    hoverBackgroundColor: 'rgba(0, 255, 200, 0.8)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return '₹' + context.parsed.y.toLocaleString();
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(255,255,255,0.1)' },
+                        ticks: { 
+                            color: '#94a3b8',
+                            callback: value => '₹' + value
+                        }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#94a3b8' }
+                    }
+                }
+            }
+        });
+        console.log('Driver charging chart initialized successfully');
+    } catch (error) {
+        console.error('Error initializing driver charging chart:', error);
+    }
+}
+
+// Initialize on load
+document.addEventListener('DOMContentLoaded', function() {
+    updateGreeting();
+    updateDate();
+    initDriverChargingChart();
+    recalculateRange(); // Initial calculation
+});
+
+// ===== Range Prediction Calculator =====
+const baseRange = driverData.estimated_range || 0;
+const batteryCapacity = driverData.battery_capacity || 0;
+const rangePerKwh = driverData.range_per_kwh || 0;
+const batteryPercentage = driverData.battery_percentage || 0;
+
+function recalculateRange() {
+    // Get factor values
+    const acFactor = parseInt(document.getElementById('acFactor')?.value || 0);
+    const drivingStyle = parseInt(document.getElementById('drivingStyle')?.value || 0);
+    const trafficFactor = parseInt(document.getElementById('trafficFactor')?.value || 0);
+    
+    // Calculate total reduction percentage
+    const totalReduction = acFactor + drivingStyle + trafficFactor;
+    
+    // Calculate adjusted range
+    const adjustedRange = Math.max(0, baseRange * (1 - totalReduction / 100));
+    
+    // Update displays
+    const adjustedRangeEl = document.getElementById('adjustedRange');
+    const estimatedRangeEl = document.getElementById('estimatedRange');
+    
+    if (adjustedRangeEl) {
+        adjustedRangeEl.textContent = adjustedRange.toFixed(1) + ' km';
+        
+        // Color based on range
+        if (adjustedRange < 50) {
+            adjustedRangeEl.style.color = '#f87171';
+        } else if (adjustedRange < 100) {
+            adjustedRangeEl.style.color = '#fb923c';
+        } else {
+            adjustedRangeEl.style.color = '#4ade80';
+        }
+    }
+    
+    // Update the main range display
+    if (estimatedRangeEl) {
+        estimatedRangeEl.textContent = adjustedRange.toFixed(0);
+    }
+    
+    // Update SVG circle animation
+    const rangeCircle = document.querySelector('.range-circle circle:nth-child(2)');
+    if (rangeCircle) {
+        const maxRange = batteryCapacity * rangePerKwh; // Max possible range at 100%
+        const rangePercent = maxRange > 0 ? (adjustedRange / maxRange) * 100 : 0;
+        const circumference = 2 * Math.PI * 54; // radius = 54
+        const offset = circumference - (rangePercent * circumference / 100);
+        rangeCircle.style.strokeDashoffset = offset;
+    }
+    
+    return adjustedRange;
+}
+
+// Range prediction formula explanation
+function showRangeFormula() {
+    alert(`Range Calculation Formula:
+    
+Battery Capacity: ${batteryCapacity} kWh
+Range per kWh: ${rangePerKwh} km/kWh
+Current Battery: ${batteryPercentage}%
+Base Range: ${baseRange.toFixed(1)} km
+
+Formula:
+Current kWh = Capacity × (Battery% / 100)
+Current kWh = ${batteryCapacity} × (${batteryPercentage} / 100) = ${(batteryCapacity * batteryPercentage / 100).toFixed(1)} kWh
+
+Estimated Range = Current kWh × Range per kWh
+Estimated Range = ${(batteryCapacity * batteryPercentage / 100).toFixed(1)} × ${rangePerKwh} = ${baseRange.toFixed(1)} km
+
+Adjustments applied for:
+- AC/Heating usage (0-20% reduction)
+- Driving style (Eco: +5%, Normal: 0%, Aggressive: -10%)
+- Traffic conditions (0-15% reduction)`);
+}
+</script>
+{% endblock %}

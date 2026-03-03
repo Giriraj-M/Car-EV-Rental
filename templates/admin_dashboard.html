@@ -1,0 +1,1358 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Dashboard - EV Taxi Fleet Management{% endblock %}
+
+{% block body_class %}dashboard-page{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-logo">
+                <i class="fas fa-bolt"></i>
+            </div>
+            <div class="brand-text">
+                <h2>EV Taxi</h2>
+                <span>Fleet Control</span>
+            </div>
+        </div>
+        
+        <nav class="sidebar-menu">
+            <div class="menu-section">
+                <span class="menu-label">Main Menu</span>
+                <ul>
+                    <li class="active" data-section="overview">
+                        <a href="#overview">
+                            <i class="fas fa-th-large"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li data-section="drivers">
+                        <a href="#drivers">
+                            <i class="fas fa-users"></i>
+                            <span>All Drivers</span>
+                            <span class="badge">{{ drivers|length }}</span>
+                        </a>
+                    </li>
+                    <li data-section="fleet">
+                        <a href="#fleet">
+                            <i class="fas fa-car"></i>
+                            <span>Fleet Status</span>
+                        </a>
+                    </li>
+                    <li data-section="vehicles">
+                        <a href="#vehicles">
+                            <i class="fas fa-car-side"></i>
+                            <span>Vehicle Models</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="menu-section">
+                <span class="menu-label">Analytics</span>
+                <ul>
+                    <li data-section="charging">
+                        <a href="#charging">
+                            <i class="fas fa-charging-station"></i>
+                            <span>Charging</span>
+                        </a>
+                    </li>
+                    <li data-section="maintenance">
+                        <a href="#maintenance">
+                            <i class="fas fa-tools"></i>
+                            <span>Maintenance</span>
+                        </a>
+                    </li>
+                    <li data-section="revenue">
+                        <a href="#revenue">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Revenue</span>
+                        </a>
+                    </li>
+                    <li data-section="costs">
+                        <a href="#costs">
+                            <i class="fas fa-coins"></i>
+                            <span>Costs</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="menu-section">
+                <span class="menu-label">Monitoring</span>
+                <ul>
+                    <li data-section="speed">
+                        <a href="#speed">
+                            <i class="fas fa-tachometer-alt"></i>
+                            <span>Speed Monitor</span>
+                            {% if stats.overspeed_drivers|length > 0 %}
+                            <span class="badge danger">{{ stats.overspeed_drivers|length }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="menu-section">
+                <span class="menu-label">Account</span>
+                <ul>
+                    <li data-section="admin-profile">
+                        <a href="#admin-profile">
+                            <i class="fas fa-user-cog"></i>
+                            <span>My Profile</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+        
+        <div class="sidebar-user">
+            <div class="user-avatar">
+                <i class="fas fa-user-shield"></i>
+            </div>
+            <div class="user-info">
+                <h4>{{ session.name }}</h4>
+                <span>{{ admin.designation if admin else 'Administrator' }}</span>
+            </div>
+            <a href="{{ url_for('logout') }}" class="logout-icon" title="Logout" aria-label="Logout">
+                <i class="fas fa-sign-out-alt"></i>
+            </a>
+        </div>
+    </aside>
+    
+    <!-- Main Content -->
+    <main class="main-area">
+        <!-- Top Bar -->
+        <header class="topbar">
+            <div class="topbar-left">
+                <button class="menu-toggle" id="menuToggle" title="Toggle menu" aria-label="Toggle menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="page-info">
+                    <h1 id="pageTitle">Dashboard Overview</h1>
+                    <nav class="breadcrumb">
+                        <span>Home</span>
+                        <i class="fas fa-chevron-right"></i>
+                        <span id="breadcrumbCurrent">Overview</span>
+                    </nav>
+                </div>
+            </div>
+            <div class="topbar-right">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Search drivers, vehicles..." id="globalSearch">
+                </div>
+                <button class="topbar-btn notification-btn" onclick="showAlerts()" title="Alerts" aria-label="Alerts">
+                    <i class="fas fa-bell"></i>
+                    {% if stats.overspeed_drivers|length > 0 %}
+                    <span class="notification-dot"></span>
+                    {% endif %}
+                </button>
+                <div class="date-display">
+                    <i class="fas fa-calendar"></i>
+                    <span id="current-date"></span>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Content Area -->
+        <div class="content-area">
+            <!-- Overview Section -->
+            <section id="overview" class="dashboard-section active">
+                <!-- Stats Row -->
+                <div class="stats-row">
+                    <div class="stat-box blue">
+                        <div class="stat-icon"><i class="fas fa-car-side"></i></div>
+                        <div class="stat-content">
+                            <span class="stat-number">{{ stats.total_cars }}</span>
+                            <span class="stat-title">Total Fleet</span>
+                        </div>
+                        <div class="stat-trend up"><i class="fas fa-arrow-up"></i> Active</div>
+                    </div>
+                    <div class="stat-box green">
+                        <div class="stat-icon"><i class="fas fa-road"></i></div>
+                        <div class="stat-content">
+                            <span class="stat-number">{{ stats.running_count }}</span>
+                            <span class="stat-title">Running</span>
+                        </div>
+                        <div class="stat-trend up"><i class="fas fa-circle"></i> Live</div>
+                    </div>
+                    <div class="stat-box orange">
+                        <div class="stat-icon"><i class="fas fa-warehouse"></i></div>
+                        <div class="stat-content">
+                            <span class="stat-number">{{ stats.garage_count }}</span>
+                            <span class="stat-title">In Garage</span>
+                        </div>
+                        <div class="stat-trend"><i class="fas fa-minus"></i> Idle</div>
+                    </div>
+                    <div class="stat-box purple">
+                        <div class="stat-icon"><i class="fas fa-bolt"></i></div>
+                        <div class="stat-content">
+                            <span class="stat-number">{{ stats.charging_count }}</span>
+                            <span class="stat-title">Charging</span>
+                        </div>
+                        <div class="stat-trend"><i class="fas fa-plug"></i> Power</div>
+                    </div>
+                </div>
+                
+                <!-- Alert Banner -->
+                {% if stats.overspeed_drivers|length > 0 %}
+                <div class="alert-card danger">
+                    <div class="alert-icon pulse">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="alert-text">
+                        <strong>Speed Violation Alert!</strong>
+                        <p>{{ stats.overspeed_drivers|length }} vehicle(s) exceeding {{ speed_limit }} km/h limit</p>
+                    </div>
+                    <button class="alert-btn" onclick="scrollToSection('speed')">View Now</button>
+                </div>
+                {% endif %}
+                
+                <!-- Quick Stats -->
+                <div class="quick-stats">
+                    <div class="qs-item">
+                        <div class="qs-icon battery"><i class="fas fa-battery-three-quarters"></i></div>
+                        <div class="qs-data">
+                            <span class="qs-value">{{ stats.avg_battery }}%</span>
+                            <span class="qs-label">Avg Battery</span>
+                        </div>
+                    </div>
+                    <div class="qs-item">
+                        <div class="qs-icon revenue"><i class="fas fa-indian-rupee-sign"></i></div>
+                        <div class="qs-data">
+                            <span class="qs-value">₹{{ "{:,.0f}".format(stats.total_revenue) }}</span>
+                            <span class="qs-label">Annual Revenue</span>
+                        </div>
+                    </div>
+                    <div class="qs-item">
+                        <div class="qs-icon charging"><i class="fas fa-plug"></i></div>
+                        <div class="qs-data">
+                            <span class="qs-value">₹{{ "{:,.0f}".format(stats.total_charging_cost) }}</span>
+                            <span class="qs-label">Charging Cost</span>
+                        </div>
+                    </div>
+                    <div class="qs-item">
+                        <div class="qs-icon maintenance"><i class="fas fa-tools"></i></div>
+                        <div class="qs-data">
+                            <span class="qs-value">₹{{ "{:,.0f}".format(stats.total_maintenance_cost) }}</span>
+                            <span class="qs-label">Maintenance</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Charts Grid -->
+                <div class="charts-grid">
+                    <div class="chart-box">
+                        <div class="chart-title">
+                            <h3><i class="fas fa-chart-pie"></i> Fleet Distribution</h3>
+                        </div>
+                        <div class="chart-canvas">
+                            <canvas id="fleetStatusChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-box">
+                        <div class="chart-title">
+                            <h3><i class="fas fa-battery-half"></i> Battery Levels</h3>
+                        </div>
+                        <div class="chart-canvas">
+                            <canvas id="batteryLevelsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Drivers Section -->
+            <section id="drivers" class="dashboard-section">
+                <div class="section-top">
+                    <h2><i class="fas fa-users"></i> All Drivers</h2>
+                    <div class="view-toggle">
+                        <button class="view-btn active" data-view="grid" title="Grid view" aria-label="Grid view"><i class="fas fa-th"></i></button>
+                        <button class="view-btn" data-view="list" title="List view" aria-label="List view"><i class="fas fa-list"></i></button>
+                    </div>
+                </div>
+                
+                <div class="drivers-grid" id="driversGrid">
+                    {% for driver in drivers %}
+                    <div class="driver-card" onclick="showDriverDetails('{{ driver.username }}')">
+                        <div class="driver-avatar {{ driver.status }}">
+                            <i class="fas fa-user"></i>
+                            <span class="status-indicator"></span>
+                        </div>
+                        <div class="driver-info">
+                            <h4>{{ driver.name }}</h4>
+                            <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px;">
+                                <span class="driver-id">{{ driver.car_number }}</span>
+                                <span style="font-size: 10px; color: #6366f1; background: rgba(99, 102, 241, 0.2); padding: 2px 6px; border-radius: 4px;">{{ driver.unique_id }}</span>
+                            </div>
+                        </div>
+                        <div class="driver-quick-stats">
+                            <div class="dqs-item">
+                                <i class="fas fa-car"></i>
+                                <span>{{ driver.car_model }}</span>
+                            </div>
+                            <div class="dqs-item">
+                                <i class="fas fa-phone"></i>
+                                <span>{{ driver.phone }}</span>
+                            </div>
+                            <div class="dqs-item">
+                                <i class="fas fa-envelope"></i>
+                                <span>{{ driver.email }}</span>
+                            </div>
+                            <div class="dqs-item status-badge {{ driver.status }}">
+                                <span>{{ driver.status|capitalize }}</span>
+                            </div>
+                        </div>
+                        <button class="view-profile-btn">View Profile <i class="fas fa-arrow-right"></i></button>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+            
+            <!-- Fleet Status Section -->
+            <section id="fleet" class="dashboard-section">
+                <div class="section-top">
+                    <h2><i class="fas fa-car"></i> Fleet Status</h2>
+                    <select id="statusFilter" onchange="filterFleet()" class="filter-select" title="Filter by status" aria-label="Filter by status">
+                        <option value="all">All Vehicles</option>
+                        <option value="running">Running</option>
+                        <option value="garage">In Garage</option>
+                    </select>
+                </div>
+                
+                <div class="fleet-cards" id="fleetGrid">
+                    {% for driver in drivers %}
+                    <div class="fleet-card {{ driver.status }}" data-status="{{ driver.status }}">
+                        <div class="fc-header">
+                            <span class="fc-id">{{ driver.car_number }}</span>
+                            <span class="fc-status {{ driver.status }}">
+                                <span class="dot"></span>{{ driver.status|capitalize }}
+                            </span>
+                        </div>
+                        <div class="fc-car">
+                            <i class="fas fa-car-side"></i>
+                        </div>
+                        <div class="fc-details">
+                            <h4>{{ driver.car_model }}</h4>
+                            <p><i class="fas fa-user"></i> {{ driver.name }} <span style="font-size: 9px; color: #6366f1; background: rgba(99, 102, 241, 0.2); padding: 1px 5px; border-radius: 3px; margin-left: 5px;">{{ driver.unique_id }}</span></p>
+                        </div>
+                        <div class="fc-stats">
+                            <div class="fc-stat">
+                                <i class="fas fa-battery-half"></i>
+                                <span>{{ driver.battery_percentage }}%</span>
+                            </div>
+                            <div class="fc-stat">
+                                <i class="fas fa-route"></i>
+                                <span>{{ driver.estimated_range }} km</span>
+                            </div>
+                            <div class="fc-stat {% if driver.current_speed > speed_limit %}danger{% endif %}">
+                                <i class="fas fa-tachometer-alt"></i>
+                                <span>{{ driver.current_speed }} km/h</span>
+                            </div>
+                        </div>
+                        <div class="fc-location">
+                            <i class="fas fa-map-marker-alt"></i> {{ driver.location }}
+                        </div>
+                        {% if driver.charging_status == 'charging' %}
+                        <div class="fc-charging">
+                            <i class="fas fa-bolt"></i> Charging - {{ driver.charging_time }} min
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+            
+            <!-- Vehicle Model Segregation Section -->
+            <section id="vehicles" class="dashboard-section">
+                <div class="section-top">
+                    <h2><i class="fas fa-car-side"></i> Vehicle Model Segregation</h2>
+                </div>
+                
+                <!-- Brand Summary Cards -->
+                <div class="brand-summary-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 30px;">
+                    {% for brand, data in stats.vehicle_by_brand.items() %}
+                    <div class="brand-card" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 20px; transition: all 0.3s ease;">
+                        <div class="brand-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h3 style="color: #e2e8f0; font-size: 18px; font-weight: 600; margin: 0;">
+                                <i class="fas fa-industry" style="color: #0891b2; margin-right: 10px;"></i>{{ brand }}
+                            </h3>
+                            <span class="brand-total" style="background: rgba(8, 145, 178, 0.2); color: #22d3ee; padding: 4px 12px; border-radius: 20px; font-size: 14px; font-weight: 600;">{{ data.total }} vehicles</span>
+                        </div>
+                        <div class="brand-status-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px;">
+                            <div class="status-item" style="text-align: center; padding: 10px; background: rgba(34, 197, 94, 0.1); border-radius: 8px;">
+                                <div style="font-size: 20px; font-weight: 700; color: #22c55e;">{{ data.running }}</div>
+                                <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase;">Running</div>
+                            </div>
+                            <div class="status-item" style="text-align: center; padding: 10px; background: rgba(234, 179, 8, 0.1); border-radius: 8px;">
+                                <div style="font-size: 20px; font-weight: 700; color: #eab308;">{{ data.garage }}</div>
+                                <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase;">Garage</div>
+                            </div>
+                            <div class="status-item" style="text-align: center; padding: 10px; background: rgba(59, 130, 246, 0.1); border-radius: 8px;">
+                                <div style="font-size: 20px; font-weight: 700; color: #3b82f6;">{{ data.charging }}</div>
+                                <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase;">Charging</div>
+                            </div>
+                        </div>
+                        <div class="brand-models" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px;">
+                            <div style="font-size: 12px; color: #64748b; margin-bottom: 8px; text-transform: uppercase; font-weight: 600;">Models</div>
+                            {% for model, model_data in data.models.items() %}
+                            <div class="model-row" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                <span style="color: #cbd5e1; font-size: 13px;">{{ model }}</span>
+                                <div style="display: flex; gap: 8px;">
+                                    <span style="font-size: 11px; padding: 2px 8px; border-radius: 10px; background: rgba(34, 197, 94, 0.15); color: #22c55e;">{{ model_data.running }}R</span>
+                                    <span style="font-size: 11px; padding: 2px 8px; border-radius: 10px; background: rgba(234, 179, 8, 0.15); color: #eab308;">{{ model_data.garage }}G</span>
+                                    <span style="font-size: 11px; padding: 2px 8px; border-radius: 10px; background: rgba(59, 130, 246, 0.15); color: #3b82f6;">{{ model_data.charging }}C</span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <!-- Vehicle Model Table -->
+                <div class="data-table-container">
+                    <h3 style="margin-bottom: 15px;"><i class="fas fa-list"></i> All Vehicle Models Summary</h3>
+                    <div class="table-scroll">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Vehicle Model</th>
+                                    <th>Brand</th>
+                                    <th>Total</th>
+                                    <th>Running</th>
+                                    <th>Garage</th>
+                                    <th>Charging</th>
+                                    <th>Battery Capacity</th>
+                                    <th>Range/kWh</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for model, data in stats.vehicle_by_model.items() %}
+                                <tr>
+                                    <td><strong>{{ model }}</strong></td>
+                                    <td>{{ car_specs.get(model, {}).get('brand', 'Unknown') }}</td>
+                                    <td><span style="background: rgba(8, 145, 178, 0.2); color: #22d3ee; padding: 3px 10px; border-radius: 15px;">{{ data.total }}</span></td>
+                                    <td><span style="color: #22c55e;">{{ data.running }}</span></td>
+                                    <td><span style="color: #eab308;">{{ data.garage }}</span></td>
+                                    <td><span style="color: #3b82f6;">{{ data.charging }}</span></td>
+                                    <td>{{ car_specs.get(model, {}).get('battery_capacity', 'N/A') }} kWh</td>
+                                    <td>{{ car_specs.get(model, {}).get('range_per_kwh', 'N/A') }} km</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Charging Section -->
+            <section id="charging" class="dashboard-section">
+                <div class="section-top">
+                    <h2><i class="fas fa-charging-station"></i> Charging Analytics</h2>
+                </div>
+                
+                <!-- Charging Overview Stats -->
+                <div class="charging-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px;">
+                    <div class="cs-card">
+                        <div class="cs-icon" style="background: linear-gradient(135deg, #22c55e, #16a34a);"><i class="fas fa-bolt"></i></div>
+                        <div class="cs-info">
+                            <span class="cs-value">{{ stats.charging_count }}</span>
+                            <span class="cs-label">Currently Charging</span>
+                        </div>
+                    </div>
+                    <div class="cs-card">
+                        <div class="cs-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb);"><i class="fas fa-battery-full"></i></div>
+                        <div class="cs-info">
+                            <span class="cs-value">{{ stats.avg_battery }}%</span>
+                            <span class="cs-label">Avg Battery Level</span>
+                        </div>
+                    </div>
+                    <div class="cs-card">
+                        <div class="cs-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);"><i class="fas fa-plug"></i></div>
+                        <div class="cs-info">
+                            <span class="cs-value">{{ "{:,.0f}".format(stats.total_energy_consumed) }} kWh</span>
+                            <span class="cs-label">Total Energy (Annual)</span>
+                        </div>
+                    </div>
+                    <div class="cs-card">
+                        <div class="cs-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);"><i class="fas fa-hashtag"></i></div>
+                        <div class="cs-info">
+                            <span class="cs-value">{{ "{:,.0f}".format(stats.total_charging_sessions) }}</span>
+                            <span class="cs-label">Total Sessions (Annual)</span>
+                        </div>
+                    </div>
+                    <div class="cs-card">
+                        <div class="cs-icon" style="background: linear-gradient(135deg, #06b6d4, #0891b2);"><i class="fas fa-clock"></i></div>
+                        <div class="cs-info">
+                            <span class="cs-value">{{ stats.avg_charging_time|int }} min</span>
+                            <span class="cs-label">Avg Charging Time</span>
+                        </div>
+                    </div>
+                    <div class="cs-card">
+                        <div class="cs-icon" style="background: linear-gradient(135deg, #ec4899, #db2777);"><i class="fas fa-heart-pulse"></i></div>
+                        <div class="cs-info">
+                            <span class="cs-value">{{ stats.avg_battery_health }}%</span>
+                            <span class="cs-label">Avg Battery Health</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Low Battery Alerts -->
+                {% if stats.low_battery_count > 0 %}
+                <div class="alert-card warning" style="margin-bottom: 20px; background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.1)); border-left: 4px solid #f59e0b; padding: 15px 20px; border-radius: 12px; display: flex; align-items: center; gap: 15px;">
+                    <div class="alert-icon" style="width: 45px; height: 45px; background: rgba(245, 158, 11, 0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-battery-quarter" style="color: #f59e0b; font-size: 18px;"></i>
+                    </div>
+                    <div class="alert-text">
+                        <strong style="color: #fbbf24;">Low Battery Alert!</strong>
+                        <p style="color: #94a3b8; margin: 0;">{{ stats.low_battery_count }} vehicle(s) with battery below 25% need charging</p>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Charging Charts Section -->
+                <div class="charts-grid" style="margin-bottom: 25px;">
+                    <div class="chart-box">
+                        <div class="chart-title">
+                            <h3><i class="fas fa-chart-area"></i> Monthly Energy Consumption (kWh)</h3>
+                        </div>
+                        <div class="chart-canvas" style="height: 280px; position: relative;">
+                            <canvas id="energyConsumptionChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-box">
+                        <div class="chart-title">
+                            <h3><i class="fas fa-chart-bar"></i> Charging Sessions per Month</h3>
+                        </div>
+                        <div class="chart-canvas" style="height: 280px; position: relative;">
+                            <canvas id="chargingSessionsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Battery Health Overview -->
+                <div class="data-table-container" style="margin-bottom: 25px;">
+                    <h3><i class="fas fa-heartbeat"></i> Fleet Battery Health Overview</h3>
+                    <div class="battery-health-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-top: 15px;">
+                        {% for driver in drivers[:10] %}
+                        <div class="bh-card" style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; border: 1px solid rgba(255,255,255,0.1);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <span style="font-weight: 600; color: #e2e8f0;">{{ driver.car_number }}</span>
+                                <span class="driver-uid" style="font-size: 10px; color: #64748b; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px;">{{ driver.unique_id }}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                <span style="color: #94a3b8; font-size: 12px;">Battery Health</span>
+                                <span style="color: {% if driver.battery_health >= 90 %}#22c55e{% elif driver.battery_health >= 80 %}#f59e0b{% else %}#ef4444{% endif %}; font-weight: 600;">{{ driver.battery_health }}%</span>
+                            </div>
+                            <div class="progress-track" style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+                                <div style="width: {{ driver.battery_health }}%; height: 100%; background: {% if driver.battery_health >= 90 %}linear-gradient(90deg, #22c55e, #16a34a){% elif driver.battery_health >= 80 %}linear-gradient(90deg, #f59e0b, #d97706){% else %}linear-gradient(90deg, #ef4444, #dc2626){% endif %}; border-radius: 3px;"></div>
+                            </div>
+                            <div style="margin-top: 8px; font-size: 11px; color: #64748b;">
+                                Last: {{ driver.last_charged.split(' ')[0] }}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Charging Vehicles -->
+                <div class="charging-vehicles">
+                    <h3><i class="fas fa-charging-station"></i> Vehicles Currently Charging</h3>
+                    <div class="cv-grid">
+                        {% for driver in drivers if driver.charging_status == 'charging' %}
+                        <div class="cv-card">
+                            <div class="cv-header">
+                                <span class="cv-id">{{ driver.car_number }}</span>
+                                <span class="cv-model">{{ driver.car_model }}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <p class="cv-driver" style="margin: 0;"><i class="fas fa-user"></i> {{ driver.name }}</p>
+                                <span style="font-size: 10px; color: #64748b; background: rgba(99, 102, 241, 0.2); padding: 2px 6px; border-radius: 4px;">{{ driver.unique_id }}</span>
+                            </div>
+                            <div class="cv-progress">
+                                <div class="progress-track">
+                                    <div class="progress-fill" data-width="{{ driver.battery_percentage }}"></div>
+                                </div>
+                                <span>{{ driver.battery_percentage }}%</span>
+                            </div>
+                            <div class="cv-time">
+                                <i class="fas fa-clock"></i> ~{{ driver.charging_time }} min remaining
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 11px; color: #94a3b8;">
+                                <span><i class="fas fa-heart-pulse"></i> {{ driver.battery_health }}% health</span>
+                                <span><i class="fas fa-map-marker-alt"></i> {{ driver.location }}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% if stats.charging_count == 0 %}
+                        <div class="no-alerts-box" style="grid-column: 1/-1;">
+                            <i class="fas fa-check-circle"></i>
+                            <h4>All Vehicles Charged!</h4>
+                            <p>No vehicles currently charging</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Charging Cost Analysis -->
+                <div class="data-table-container" style="margin-top: 25px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3 style="margin: 0;"><i class="fas fa-indian-rupee-sign"></i> Charging Cost by Vehicle</h3>
+                        <div class="charging-cost-sort-controls" style="display: flex; gap: 10px; align-items: center;">
+                            <span style="font-size: 13px; color: #94a3b8;">Sort by Total:</span>
+                            <select id="chargingCostSortOrder" onchange="sortChargingCostTable()" style="padding: 8px 12px; border-radius: 8px; background: #1e293b; border: 1px solid rgba(255,255,255,0.15); color: #e2e8f0; font-size: 13px; cursor: pointer;">
+                                <option value="asc" style="background: #1e293b; color: #e2e8f0;">Ascending</option>
+                                <option value="desc" style="background: #1e293b; color: #e2e8f0;">Descending</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="table-scroll">
+                        <table class="data-table" id="chargingCostTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Vehicle</th>
+                                    <th>Driver</th>
+                                    {% for month in months %}
+                                    <th>{{ month }}</th>
+                                    {% endfor %}
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for driver in drivers %}
+                                <tr>
+                                    <td><span style="font-size: 10px; color: #6366f1;">{{ driver.unique_id }}</span></td>
+                                    <td><strong>{{ driver.car_number }}</strong></td>
+                                    <td>{{ driver.name }}</td>
+                                    {% for cost in driver.charging_cost_monthly %}
+                                    <td>₹{{ "{:,.0f}".format(cost) }}</td>
+                                    {% endfor %}
+                                    <td class="total">₹{{ "{:,.0f}".format(driver.charging_cost_monthly|sum) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Maintenance Section -->
+            <section id="maintenance" class="dashboard-section">
+                <div class="section-top">
+                    <h2><i class="fas fa-tools"></i> Maintenance Analytics</h2>
+                </div>
+                
+                <!-- Maintenance Overview Stats -->
+                <div class="charging-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px;">
+                    <div class="cs-card">
+                        <div class="cs-icon" style="background: linear-gradient(135deg, #ef4444, #dc2626);"><i class="fas fa-wrench"></i></div>
+                        <div class="cs-info">
+                            <span class="cs-value">₹{{ "{:,.0f}".format(stats.total_maintenance_cost) }}</span>
+                            <span class="cs-label">Total Annual Cost</span>
+                        </div>
+                    </div>
+                    <div class="cs-card">
+                        <div class="cs-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);"><i class="fas fa-calendar-alt"></i></div>
+                        <div class="cs-info">
+                            <span class="cs-value">₹{{ "{:,.0f}".format(stats.total_maintenance_cost / 12) }}</span>
+                            <span class="cs-label">Avg Monthly Cost</span>
+                        </div>
+                    </div>
+                    <div class="cs-card">
+                        <div class="cs-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb);"><i class="fas fa-car"></i></div>
+                        <div class="cs-info">
+                            <span class="cs-value">₹{{ "{:,.0f}".format(stats.total_maintenance_cost / 10) }}</span>
+                            <span class="cs-label">Avg Per Vehicle</span>
+                        </div>
+                    </div>
+                    <div class="cs-card">
+                        <div class="cs-icon" style="background: linear-gradient(135deg, #22c55e, #16a34a);"><i class="fas fa-chart-line"></i></div>
+                        <div class="cs-info">
+                            <span class="cs-value">₹{{ "{:,.0f}".format(stats.total_maintenance_cost / 365) }}</span>
+                            <span class="cs-label">Daily Average</span>
+                        </div>
+                    </div>
+                    <div class="cs-card">
+                        <div class="cs-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);"><i class="fas fa-percentage"></i></div>
+                        <div class="cs-info">
+                            <span class="cs-value">{{ "%.1f"|format((stats.total_maintenance_cost / stats.total_revenue * 100) if stats.total_revenue > 0 else 0) }}%</span>
+                            <span class="cs-label">% of Revenue</span>
+                        </div>
+                    </div>
+                    <div class="cs-card">
+                        <div class="cs-icon" style="background: linear-gradient(135deg, #06b6d4, #0891b2);"><i class="fas fa-truck"></i></div>
+                        <div class="cs-info">
+                            <span class="cs-value">10</span>
+                            <span class="cs-label">Vehicles Serviced</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Maintenance Charts Section -->
+                <div class="charts-grid" style="margin-bottom: 25px;">
+                    <div class="chart-box">
+                        <div class="chart-title">
+                            <h3><i class="fas fa-chart-area"></i> Monthly Maintenance Cost Trend</h3>
+                        </div>
+                        <div class="chart-canvas" style="height: 280px; position: relative;">
+                            <canvas id="maintenanceTrendChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-box">
+                        <div class="chart-title">
+                            <h3><i class="fas fa-chart-bar"></i> Maintenance Sessions per Month</h3>
+                        </div>
+                        <div class="chart-canvas" style="height: 280px; position: relative;">
+                            <canvas id="maintenanceSessionsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Maintenance Cost Table -->
+                <div class="data-table-container">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3 style="margin: 0;"><i class="fas fa-table"></i> Maintenance Cost by Vehicle</h3>
+                        <div class="maintenance-sort-controls" style="display: flex; gap: 10px; align-items: center;">
+                            <span style="font-size: 13px; color: #94a3b8;">Sort by Total:</span>
+                            <select id="maintenanceSortOrder" onchange="sortMaintenanceTable()" style="padding: 8px 12px; border-radius: 8px; background: #1e293b; border: 1px solid rgba(255,255,255,0.15); color: #e2e8f0; font-size: 13px; cursor: pointer;">
+                                <option value="asc" style="background: #1e293b; color: #e2e8f0;">Ascending</option>
+                                <option value="desc" style="background: #1e293b; color: #e2e8f0;">Descending</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="table-scroll">
+                        <table class="data-table" id="maintenanceTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Vehicle</th>
+                                    <th>Driver</th>
+                                    {% for month in months %}
+                                    <th>{{ month }}</th>
+                                    {% endfor %}
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for driver in drivers %}
+                                <tr>
+                                    <td><span style="font-size: 10px; color: #6366f1;">{{ driver.unique_id }}</span></td>
+                                    <td><strong>{{ driver.car_number }}</strong></td>
+                                    <td>{{ driver.name }}</td>
+                                    {% for cost in driver.maintenance_cost_monthly %}
+                                    <td>₹{{ "{:,.0f}".format(cost) }}</td>
+                                    {% endfor %}
+                                    <td class="total">₹{{ "{:,.0f}".format(driver.maintenance_cost_monthly|sum) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Revenue Section -->
+            <section id="revenue" class="dashboard-section">
+                <div class="section-top">
+                    <h2><i class="fas fa-chart-line"></i> Revenue Analytics</h2>
+                </div>
+                
+                <div class="revenue-stats-grid">
+                    <div class="cs-card">
+                        <div class="cs-icon" style="background: linear-gradient(135deg, #6366f1, #8b5cf6);"><i class="fas fa-wallet"></i></div>
+                        <div class="cs-info">
+                            <span class="cs-value">₹{{ "{:,.0f}".format(stats.total_revenue) }}</span>
+                            <span class="cs-label">Total Annual Revenue</span>
+                        </div>
+                    </div>
+                    <div class="cs-card">
+                        <div class="cs-icon" style="background: linear-gradient(135deg, #22c55e, #16a34a);"><i class="fas fa-calendar-alt"></i></div>
+                        <div class="cs-info">
+                            <span class="cs-value">₹{{ "{:,.0f}".format(stats.total_revenue / 12) }}</span>
+                            <span class="cs-label">Avg Monthly Revenue</span>
+                        </div>
+                    </div>
+                    <div class="cs-card">
+                        <div class="cs-icon" style="background: linear-gradient(135deg, #00d9ff, #0ea5e9);"><i class="fas fa-car"></i></div>
+                        <div class="cs-info">
+                            <span class="cs-value">₹{{ "{:,.0f}".format(stats.total_revenue / 10) }}</span>
+                            <span class="cs-label">Avg Per Vehicle</span>
+                        </div>
+                    </div>
+                    <div class="cs-card">
+                        <div class="cs-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);"><i class="fas fa-chart-line"></i></div>
+                        <div class="cs-info">
+                            <span class="cs-value">₹{{ "{:,.0f}".format(stats.total_revenue / 365) }}</span>
+                            <span class="cs-label">Daily Average</span>
+                        </div>
+                    </div>
+                    <div class="cs-card">
+                        <div class="cs-icon" style="background: linear-gradient(135deg, #ec4899, #db2777);"><i class="fas fa-percentage"></i></div>
+                        <div class="cs-info">
+                            <span class="cs-value">₹{{ "{:,.0f}".format((stats.total_revenue - stats.total_maintenance_cost - stats.total_charging_cost)) }}</span>
+                            <span class="cs-label">Net Profit (Annual)</span>
+                        </div>
+                    </div>
+                    <div class="cs-card">
+                        <div class="cs-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);"><i class="fas fa-coins"></i></div>
+                        <div class="cs-info">
+                            <span class="cs-value">{{ "%.1f"|format(((stats.total_revenue - stats.total_maintenance_cost - stats.total_charging_cost) / stats.total_revenue * 100) if stats.total_revenue > 0 else 0) }}%</span>
+                            <span class="cs-label">Profit Margin</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="chart-box wide">
+                    <div class="chart-title">
+                        <h3><i class="fas fa-chart-bar"></i> Monthly Revenue</h3>
+                        <select id="revenueVehicleSelect" onchange="updateRevenueChart()" title="Select vehicle" aria-label="Select vehicle">
+                            <option value="all">All Vehicles</option>
+                            {% for driver in drivers %}
+                            <option value="{{ driver.name }}">{{ driver.car_number }} - {{ driver.name }} ({{ driver.unique_id }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="chart-canvas tall">
+                        <canvas id="revenueChart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Revenue Table -->
+                <div class="data-table-container">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3 style="margin: 0;"><i class="fas fa-table"></i> Revenue Details</h3>
+                        <div class="revenue-sort-controls" style="display: flex; gap: 10px; align-items: center;">
+                            <span style="font-size: 13px; color: #94a3b8;">Sort by Revenue:</span>
+                            <select id="revenueSortOrder" onchange="sortRevenueTable()" style="padding: 8px 12px; border-radius: 8px; background: #1e293b; border: 1px solid rgba(255,255,255,0.15); color: #e2e8f0; font-size: 13px; cursor: pointer;">
+                                <option value="asc" style="background: #1e293b; color: #e2e8f0;">Ascending</option>
+                                <option value="desc" style="background: #1e293b; color: #e2e8f0;">Descending</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="table-scroll">
+                        <table class="data-table" id="revenueTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Vehicle</th>
+                                    <th>Driver</th>
+                                    {% for month in months %}
+                                    <th>{{ month }}</th>
+                                    {% endfor %}
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for driver in drivers %}
+                                <tr>
+                                    <td><span style="font-size: 10px; color: #6366f1;">{{ driver.unique_id }}</span></td>
+                                    <td><strong>{{ driver.car_number }}</strong></td>
+                                    <td>{{ driver.name }}</td>
+                                    {% for rev in driver.monthly_revenue %}
+                                    <td>₹{{ "{:,.0f}".format(rev) }}</td>
+                                    {% endfor %}
+                                    <td class="total">₹{{ "{:,.0f}".format(driver.monthly_revenue|sum) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Costs Section -->
+            <section id="costs" class="dashboard-section">
+                <div class="section-top">
+                    <h2><i class="fas fa-coins"></i> Cost Analysis</h2>
+                    <div class="cost-type-btns" style="display: flex; gap: 10px;">
+                        <button class="ctb active" id="maintenanceBtn" data-type="maintenance" onclick="window.switchCostType('maintenance')" style="padding: 10px 20px; border-radius: 10px; border: none; cursor: pointer; background: linear-gradient(135deg, #ef4444, #dc2626); color: white; font-weight: 600; display: flex; align-items: center; gap: 8px; transition: all 0.3s;">
+                            <i class="fas fa-tools"></i> Maintenance
+                        </button>
+                        <button class="ctb" id="chargingBtn" data-type="charging" onclick="window.switchCostType('charging')" style="padding: 10px 20px; border-radius: 10px; border: none; cursor: pointer; background: rgba(255,255,255,0.1); color: #94a3b8; font-weight: 600; display: flex; align-items: center; gap: 8px; transition: all 0.3s;">
+                            <i class="fas fa-bolt"></i> Charging
+                        </button>
+                        <button class="ctb" id="combinedBtn" data-type="combined" onclick="window.switchCostType('combined')" style="padding: 10px 20px; border-radius: 10px; border: none; cursor: pointer; background: rgba(255,255,255,0.1); color: #94a3b8; font-weight: 600; display: flex; align-items: center; gap: 8px; transition: all 0.3s;">
+                            <i class="fas fa-layer-group"></i> Combined
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="cost-summary">
+                    <div class="cost-box">
+                        <span class="cb-label">Daily Avg</span>
+                        <span class="cb-value" id="dailyCost">₹{{ "{:,.0f}".format(stats.total_maintenance_cost / 365) }}</span>
+                    </div>
+                    <div class="cost-box">
+                        <span class="cb-label">Monthly Avg</span>
+                        <span class="cb-value" id="monthlyCost">₹{{ "{:,.0f}".format(stats.total_maintenance_cost / 12) }}</span>
+                    </div>
+                    <div class="cost-box">
+                        <span class="cb-label">Yearly Total</span>
+                        <span class="cb-value" id="yearlyCost">₹{{ "{:,.0f}".format(stats.total_maintenance_cost) }}</span>
+                    </div>
+                </div>
+                
+                <div class="charts-grid">
+                    <div class="chart-box">
+                        <div class="chart-title">
+                            <h3 id="costTrendTitle"><i class="fas fa-chart-line"></i> Maintenance Cost Trend - Monthly</h3>
+                        </div>
+                        <div class="chart-canvas" style="height: 300px; position: relative;">
+                            <canvas id="costTrendChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-box">
+                        <div class="chart-title">
+                            <h3 id="costDistTitle"><i class="fas fa-chart-pie"></i> Maintenance Cost Distribution by Vehicle</h3>
+                        </div>
+                        <div class="chart-canvas" style="height: 300px; position: relative;">
+                            <canvas id="costDistributionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cost Analysis Chart -->
+                <div class="cost-card">
+                    <div class="cost-header" style="flex-direction: column; align-items: flex-start; gap: 15px;">
+                        <h3 id="costAnalysisTitle"><i class="fas fa-chart-bar"></i> Fleet Maintenance Cost Analysis</h3>
+                        <div style="display: flex; justify-content: flex-end; width: 100%; flex-wrap: wrap; gap: 10px;">
+                            <!-- Period Buttons -->
+                            <div class="period-select" style="display: flex; gap: 8px;">
+                                <button id="dailyBtn" onclick="window.switchChargingPeriod('daily')" style="padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; background: rgba(255,255,255,0.1); color: #94a3b8; font-weight: 500;">Daily</button>
+                                <button id="monthlyBtn" onclick="window.switchChargingPeriod('monthly')" style="padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; background: rgba(0,217,255,0.3); color: #00d9ff; font-weight: 500;">Monthly</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="chargingChartTitle" style="text-align: center; color: #fff; font-size: 14px; font-weight: 600; margin: 10px 0;">Fleet Monthly Maintenance Costs</div>
+                    <div style="height: 320px; width: 100%; position: relative; background: rgba(0,0,0,0.2); border-radius: 12px; padding: 15px;">
+                        <canvas id="chargingCanvas"></canvas>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Speed Monitor Section -->
+            <section id="speed" class="dashboard-section">
+                <div class="section-top">
+                    <h2><i class="fas fa-tachometer-alt"></i> Speed Monitoring</h2>
+                    <div class="speed-limit-info">
+                        <i class="fas fa-exclamation-circle"></i>
+                        Limit: <strong>{{ speed_limit }} km/h</strong>
+                    </div>
+                </div>
+                
+                <div class="speed-alerts-grid">
+                    {% for driver in drivers if driver.current_speed > speed_limit %}
+                    <div class="speed-alert-card {% if driver.current_speed > speed_limit + 15 %}critical{% else %}warning{% endif %}">
+                        <div class="sac-top">
+                            <div class="sac-icon">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                            <span class="sac-badge">
+                                {% if driver.current_speed > speed_limit + 15 %}DANGER{% else %}WARNING{% endif %}
+                            </span>
+                        </div>
+                        <div class="sac-speed">
+                            <span class="speed-num">{{ driver.current_speed }}</span>
+                            <span class="speed-unit">km/h</span>
+                        </div>
+                        <div class="sac-over">
+                            <i class="fas fa-arrow-up"></i> {{ driver.current_speed - speed_limit }} km/h over
+                        </div>
+                        <div class="sac-info">
+                            <p><strong>{{ driver.car_number }}</strong></p>
+                            <p>{{ driver.name }} <span style="font-size: 9px; color: #6366f1; background: rgba(99, 102, 241, 0.2); padding: 1px 4px; border-radius: 3px;">{{ driver.unique_id }}</span></p>
+                            <p><i class="fas fa-map-marker-alt"></i> {{ driver.location }}</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    {% if stats.overspeed_drivers|length == 0 %}
+                    <div class="no-alerts-box">
+                        <i class="fas fa-check-circle"></i>
+                        <h4>All Clear!</h4>
+                        <p>No speed violations detected</p>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="chart-box wide">
+                    <div class="chart-title">
+                        <h3><i class="fas fa-chart-bar"></i> All Vehicles Speed</h3>
+                    </div>
+                    <div class="chart-canvas tall">
+                        <canvas id="speedChart"></canvas>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Admin Profile Section -->
+            <section id="admin-profile" class="dashboard-section">
+                <div class="section-top">
+                    <h2><i class="fas fa-user-cog"></i> My Profile</h2>
+                </div>
+                
+                <div class="admin-profile-grid">
+                    <div class="profile-card main-profile admin-main-profile">
+                        <div class="profile-header">
+                            <div class="profile-avatar-large admin-avatar">
+                                <i class="fas fa-user-shield"></i>
+                            </div>
+                            <div class="profile-name">
+                                <h3>{{ admin.name }}</h3>
+                                <p>{{ admin.designation }}</p>
+                                <span style="font-size: 11px; color: #6366f1; background: rgba(99, 102, 241, 0.2); padding: 3px 10px; border-radius: 6px; margin-top: 8px; display: inline-block;">{{ admin.unique_id }}</span>
+                            </div>
+                        </div>
+                        <div class="profile-details">
+                            <div class="pd-row">
+                                <div class="pd-item">
+                                    <span class="pd-label"><i class="fas fa-user-tag"></i> Username</span>
+                                    <span class="pd-value">{{ admin.username }}</span>
+                                </div>
+                                <div class="pd-item">
+                                    <span class="pd-label"><i class="fas fa-id-badge"></i> Unique ID</span>
+                                    <span class="pd-value" style="color: #6366f1; font-weight: 600;">{{ admin.unique_id }}</span>
+                                </div>
+                            </div>
+                            <div class="pd-row">
+                                <div class="pd-item">
+                                    <span class="pd-label"><i class="fas fa-envelope"></i> Email</span>
+                                    <span class="pd-value">{{ admin.email }}</span>
+                                </div>
+                                <div class="pd-item">
+                                    <span class="pd-label"><i class="fas fa-phone"></i> Phone</span>
+                                    <span class="pd-value">{{ admin.phone }}</span>
+                                </div>
+                            </div>
+                            <div class="pd-row full">
+                                <div class="pd-item">
+                                    <span class="pd-label"><i class="fas fa-building"></i> Office Location</span>
+                                    <span class="pd-value">{{ admin.office }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-card fleet-summary-card">
+                        <h4><i class="fas fa-chart-bar"></i> My Fleet Summary</h4>
+                        <div class="fleet-summary-stats">
+                            <div class="fss-item">
+                                <div class="fss-icon"><i class="fas fa-users"></i></div>
+                                <div class="fss-data">
+                                    <span class="fss-num">{{ drivers|length }}</span>
+                                    <span class="fss-label">Total Drivers</span>
+                                </div>
+                            </div>
+                            <div class="fss-item">
+                                <div class="fss-icon"><i class="fas fa-car"></i></div>
+                                <div class="fss-data">
+                                    <span class="fss-num">{{ stats.running_count }}</span>
+                                    <span class="fss-label">On Road</span>
+                                </div>
+                            </div>
+                            <div class="fss-item">
+                                <div class="fss-icon"><i class="fas fa-bolt"></i></div>
+                                <div class="fss-data">
+                                    <span class="fss-num">{{ stats.charging_count }}</span>
+                                    <span class="fss-label">Charging</span>
+                                </div>
+                            </div>
+                            <div class="fss-item">
+                                <div class="fss-icon"><i class="fas fa-indian-rupee-sign"></i></div>
+                                <div class="fss-data">
+                                    <span class="fss-num">₹{{ "{:,.0f}".format(stats.total_revenue) }}</span>
+                                    <span class="fss-label">Total Revenue</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-card drivers-list-card">
+                        <h4><i class="fas fa-users"></i> My Drivers</h4>
+                        <div class="mini-drivers-list">
+                            {% for driver in drivers[:6] %}
+                            <div class="mini-driver-item {{ driver.status }}">
+                                <div class="mdi-avatar"><i class="fas fa-user"></i></div>
+                                <div class="mdi-info">
+                                    <span class="mdi-name">{{ driver.name }} <span style="font-size: 8px; color: #6366f1;">({{ driver.unique_id }})</span></span>
+                                    <span class="mdi-car">{{ driver.car_number }}</span>
+                                </div>
+                                <span class="mdi-status {{ driver.status }}">{{ driver.status|capitalize }}</span>
+                            </div>
+                            {% endfor %}
+                            {% if drivers|length > 6 %}
+                            <div class="view-all-drivers">
+                                <a href="#drivers" onclick="scrollToSection('drivers')">View all {{ drivers|length }} drivers <i class="fas fa-arrow-right"></i></a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+</div>
+
+<!-- Driver Details Modal -->
+<div class="modal" id="driverModal">
+    <div class="modal-box large">
+        <div class="modal-head">
+            <h3><i class="fas fa-user"></i> Driver Profile</h3>
+            <button class="modal-close" onclick="closeDriverModal()" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal-body" id="driverModalBody">
+            <!-- Content populated by JS -->
+        </div>
+    </div>
+</div>
+
+<!-- Alert Modal -->
+<div class="modal" id="alertModal">
+    <div class="modal-box">
+        <div class="modal-head danger">
+            <h3><i class="fas fa-exclamation-triangle"></i> Speed Violations</h3>
+            <button class="modal-close" onclick="closeModal()" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal-body" id="alertModalBody">
+        </div>
+    </div>
+</div>
+
+<script>
+const driversData = {{ drivers|tojson|safe }};
+const monthsData = {{ months|tojson|safe }};
+const speedLimit = {{ speed_limit }};
+const fleetStats = {{ stats|tojson|safe }};
+
+// Set dynamic widths from data attributes
+document.querySelectorAll('[data-width]').forEach(function(el) {
+    el.style.width = el.getAttribute('data-width') + '%';
+});
+
+// Charging Cost Chart - Global variables
+var chargingChart = null;
+var currentChargingType = 'maintenance';
+var currentChargingPeriod = 'monthly';
+
+// Expose these as window properties so charts.js can sync them
+window.currentChargingType = currentChargingType;
+window.currentChargingPeriod = currentChargingPeriod;
+
+// Color schemes for each type
+var typeColors = {
+    maintenance: { main: '#ef4444', bg: 'rgba(239, 68, 68, 0.3)', gradient: 'linear-gradient(135deg, #ef4444, #dc2626)' },
+    charging: { main: '#00d9ff', bg: 'rgba(0, 217, 255, 0.3)', gradient: 'linear-gradient(135deg, #00d9ff, #0ea5e9)' },
+    combined: { main: '#6366f1', bg: 'rgba(99, 102, 241, 0.3)', gradient: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }
+};
+
+// Seeded random function for consistent data
+function seededRandom(seed) {
+    var x = Math.sin(seed) * 10000;
+    return x - Math.floor(x);
+}
+
+// Get data based on type and period
+function getChargingData(costType, period) {
+    var data = [];
+    
+    if (period === 'daily') {
+        for (var i = 0; i < 30; i++) {
+            var total = 0;
+            driversData.forEach(function(d, dIdx) {
+                var seed = (d.id || dIdx) * 100 + i;
+                var factor = 0.8 + seededRandom(seed) * 0.4;
+                
+                if (costType === 'maintenance') {
+                    var monthlyAvg = d.maintenance_cost_monthly ? d.maintenance_cost_monthly.reduce(function(a,b){return a+b;},0)/12 : 1500;
+                    total += Math.round((monthlyAvg / 30) * factor);
+                } else if (costType === 'charging') {
+                    var monthlyAvg = d.charging_cost_monthly ? d.charging_cost_monthly.reduce(function(a,b){return a+b;},0)/12 : 300;
+                    total += Math.round((monthlyAvg / 30) * factor);
+                } else {
+                    var maintAvg = d.maintenance_cost_monthly ? d.maintenance_cost_monthly.reduce(function(a,b){return a+b;},0)/12 : 1500;
+                    var chargeAvg = d.charging_cost_monthly ? d.charging_cost_monthly.reduce(function(a,b){return a+b;},0)/12 : 300;
+                    total += Math.round(((maintAvg + chargeAvg) / 30) * factor);
+                }
+            });
+            data.push(total);
+        }
+    } else {
+        for (var m = 0; m < 12; m++) {
+            var total = 0;
+            driversData.forEach(function(d) {
+                if (costType === 'maintenance') {
+                    total += (d.maintenance_cost_monthly && d.maintenance_cost_monthly[m]) || 0;
+                } else if (costType === 'charging') {
+                    total += (d.charging_cost_monthly && d.charging_cost_monthly[m]) || 0;
+                } else {
+                    var maint = (d.maintenance_cost_monthly && d.maintenance_cost_monthly[m]) || 0;
+                    var charge = (d.charging_cost_monthly && d.charging_cost_monthly[m]) || 0;
+                    total += maint + charge;
+                }
+            });
+            data.push(total);
+        }
+    }
+    return data;
+}
+
+// Create or update the charging chart
+function updateChargingAnalysisChart() {
+    var canvas = document.getElementById('chargingCanvas');
+    if (!canvas) return;
+    
+    // Sync with window variables (in case charts.js updated them)
+    if (typeof window.currentChargingType !== 'undefined') {
+        currentChargingType = window.currentChargingType;
+    }
+    if (typeof window.currentChargingPeriod !== 'undefined') {
+        currentChargingPeriod = window.currentChargingPeriod;
+    }
+    
+    var ctx = canvas.getContext('2d');
+    
+    // Destroy existing chart
+    if (chargingChart) {
+        chargingChart.destroy();
+        chargingChart = null;
+    }
+    
+    var isDaily = (currentChargingPeriod === 'daily');
+    var colors = typeColors[currentChargingType];
+    var labels = isDaily 
+        ? Array.from({length: 30}, function(_, i) { return 'Day ' + (i + 1); })
+        : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    var data = getChargingData(currentChargingType, currentChargingPeriod);
+    
+    var typeLabel = currentChargingType.charAt(0).toUpperCase() + currentChargingType.slice(1);
+    var periodLabel = isDaily ? 'Daily' : 'Monthly';
+    var chartTitle = 'Fleet ' + periodLabel + ' ' + typeLabel + ' Costs';
+    
+    // Update title
+    var titleEl = document.getElementById('chargingChartTitle');
+    if (titleEl) titleEl.textContent = chartTitle;
+    
+    var barColors = isDaily ? colors.bg : [
+        colors.main, colors.bg, 'rgba(99, 102, 241, 0.8)',
+        'rgba(139, 92, 246, 0.8)', 'rgba(236, 72, 153, 0.8)', 'rgba(245, 158, 11, 0.8)',
+        'rgba(34, 197, 94, 0.8)', 'rgba(59, 130, 246, 0.8)', 'rgba(249, 115, 22, 0.8)',
+        'rgba(168, 85, 247, 0.8)', 'rgba(14, 165, 233, 0.8)', 'rgba(16, 185, 129, 0.8)'
+    ];
+    
+    chargingChart = new Chart(ctx, {
+        type: isDaily ? 'line' : 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: periodLabel + ' ' + typeLabel + ' Cost (₹)',
+                data: data,
+                backgroundColor: barColors,
+                borderColor: colors.main,
+                borderWidth: isDaily ? 3 : 1,
+                tension: 0.4,
+                fill: isDaily,
+                borderRadius: isDaily ? 0 : 8,
+                pointRadius: isDaily ? 5 : 0,
+                pointBackgroundColor: colors.main,
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 200 },
+            layout: {
+                padding: { top: 25 }
+            },
+            plugins: {
+                legend: { 
+                    display: false
+                },
+                datalabels: {
+                    display: function(context) {
+                        // For daily view, show every 3rd label to avoid overlap
+                        if (isDaily) {
+                            return context.dataIndex % 3 === 0;
+                        }
+                        return true;
+                    },
+                    color: isDaily ? colors.main : '#fff',
+                    anchor: 'end',
+                    align: isDaily ? 'top' : 'end',
+                    offset: isDaily ? 4 : -4,
+                    font: { weight: 'bold', size: isDaily ? 10 : 11 },
+                    formatter: function(value) { return '₹' + value; }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            return ctx.dataset.label + ': ₹' + ctx.parsed.y.toLocaleString();
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: 'Cost (₹)', color: '#94a3b8' },
+                    grid: { color: 'rgba(148, 163, 184, 0.15)' },
+                    ticks: { color: '#94a3b8', callback: function(v) { return '₹' + v.toLocaleString(); } }
+                },
+                x: { 
+                    title: { display: true, text: isDaily ? 'Day of Month' : 'Month', color: '#94a3b8' },
+                    grid: { display: false }, 
+                    ticks: { color: '#94a3b8' } 
+                }
+            }
+        }
+    });
+}
+
+// Switch cost type (Maintenance/Charging/Combined) - synced with top buttons
+window.switchChargingType = function(type) {
+    currentChargingType = type;
+    window.currentChargingType = type;
+    updateChargingAnalysisChart();
+};
+
+// Switch period (Daily/Monthly)
+window.switchChargingPeriod = function(period) {
+    currentChargingPeriod = period;
+    window.currentChargingPeriod = period;
+    
+    var dailyBtn = document.getElementById('dailyBtn');
+    var monthlyBtn = document.getElementById('monthlyBtn');
+    
+    if (period === 'daily') {
+        if (dailyBtn) { dailyBtn.style.background = 'rgba(0,217,255,0.3)'; dailyBtn.style.color = '#00d9ff'; }
+        if (monthlyBtn) { monthlyBtn.style.background = 'rgba(255,255,255,0.1)'; monthlyBtn.style.color = '#94a3b8'; }
+    } else {
+        if (monthlyBtn) { monthlyBtn.style.background = 'rgba(0,217,255,0.3)'; monthlyBtn.style.color = '#00d9ff'; }
+        if (dailyBtn) { dailyBtn.style.background = 'rgba(255,255,255,0.1)'; dailyBtn.style.color = '#94a3b8'; }
+    }
+    
+    updateChargingAnalysisChart();
+};
+
+// Initialize chart when charging section becomes visible
+window.initChargingChartIfNeeded = function() {
+    var section = document.getElementById('charging');
+    if (section && section.classList.contains('active')) {
+        updateChargingAnalysisChart();
+    }
+};
+
+// Make chart function globally available
+window.updateChargingAnalysisChart = updateChargingAnalysisChart;
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/charts.js') }}?v={{ range(1000, 9999) | random }}"></script>
+<script src="{{ url_for('static', filename='js/admin.js') }}?v={{ range(1000, 9999) | random }}"></script>
+{% endblock %}
